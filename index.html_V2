@@ -320,6 +320,32 @@ label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-
 .camp-del { background: transparent; border: none; color: var(--dim); font-size: 17px; }
 .camp-notes { color: var(--muted); font-size: 11px; line-height: 1.5; }
 
+/* Waypoint day assignment */
+.wp-day-badge { display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; font-family: var(--mono); border-radius: 4px; padding: 1px 5px; margin-left: 4px; background: var(--amber); color: var(--bg); cursor: pointer; transition: all 0.15s; }
+.wp-day-badge:hover { opacity: 0.8; }
+.wp-day-select { background: var(--bg); border: 1px solid var(--b2); color: var(--text); border-radius: 5px; font-size: 10px; font-family: var(--sans); padding: 2px 4px; width: 100%; margin-top: 3px; }
+
+/* GPX Export section */
+.gpx-section { padding: 10px 14px; border-top: 1px solid var(--border); flex-shrink: 0; background: rgba(34,211,238,0.02); }
+.gpx-section-label { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 7px; }
+.gpx-btn { width: 100%; background: transparent; border: 1.5px solid var(--cyan2); color: var(--cyan); border-radius: 7px; padding: 8px; font-size: 10px; font-weight: 700; font-family: var(--mono); display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
+.gpx-btn:hover { background: rgba(34,211,238,0.1); }
+.gpx-options { display: flex; gap: 5px; margin-bottom: 7px; }
+.gpx-opt { flex: 1; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 9px; font-weight: 700; font-family: var(--mono); padding: 4px 0; text-align: center; cursor: pointer; transition: all 0.15s; }
+.gpx-opt.active { background: rgba(34,211,238,0.12); border-color: var(--cyan2); color: var(--cyan); }
+
+/* Currents overlay toggle */
+.wx-overlay-controls { position: absolute; top: 12px; right: 12px; z-index: 400; display: flex; flex-direction: column; gap: 6px; }
+.wx-overlay-btn { background: rgba(7,21,37,0.95); border: 1.5px solid var(--b2); color: var(--muted); border-radius: 8px; padding: 7px 13px; font-size: 10px; font-weight: 700; font-family: var(--mono); transition: all 0.15s; }
+.wx-overlay-btn.active { border-color: var(--cyan); color: var(--cyan); }
+.wx-overlay-btn.currents-active { border-color: #a78bfa; color: #a78bfa; }
+
+/* Day-colored route segments on weather map */
+.day-legend { position: absolute; bottom: 50px; left: 12px; z-index: 400; background: rgba(7,21,37,0.95); border: 1px solid var(--b2); border-radius: 10px; padding: 9px 12px; display: flex; flex-direction: column; gap: 5px; max-width: 160px; }
+.day-legend-title { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+.day-legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; font-family: var(--mono); }
+.day-legend-swatch { width: 20px; height: 3px; border-radius: 2px; }
+
 /* Toasts */
 #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--b2); color: var(--text); padding: 10px 20px; border-radius: 99px; font-size: 12px; font-weight: 600; z-index: 9999; opacity: 0; transition: opacity 0.2s; pointer-events: none; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
 #toast.show { opacity: 1; }
@@ -437,6 +463,18 @@ label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-
           <button id="add-wp-btn" style="background:var(--bg);border-color:var(--b2);color:var(--muted)">+ WP</button>
           <button id="add-camp-btn" style="background:var(--bg);border-color:var(--b2);color:var(--muted)">⛺ Site</button>
         </div>
+        <!-- GPX Export -->
+        <div class="gpx-section" id="gpx-section" style="display:none">
+          <div class="gpx-section-label">↓ Export Route</div>
+          <div class="gpx-options">
+            <button class="gpx-opt active" id="gpx-opt-all" onclick="setGpxExportMode('all')">All WPs</button>
+            <button class="gpx-opt" id="gpx-opt-day" onclick="setGpxExportMode('day')">By Day</button>
+          </div>
+          <div id="gpx-day-select-wrap" style="display:none;margin-bottom:7px">
+            <select id="gpx-day-select" style="font-size:10px;padding:4px 7px"></select>
+          </div>
+          <button class="gpx-btn" id="gpx-export-btn" onclick="exportGPX()">⬇ Download GPX</button>
+        </div>
       </div>
       <div id="map-wrap">
         <div id="route-map"></div>
@@ -501,9 +539,11 @@ label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-
         </div>
         <div class="wx-map-wrap">
           <div id="weather-map" style="width:100%;height:100%"></div>
-          <div id="wx-wind-toggle" style="position:absolute;top:12px;right:12px;z-index:400">
-            <button id="wx-wind-btn" style="background:rgba(7,21,37,0.95);border:1.5px solid var(--cyan);color:var(--cyan);border-radius:8px;padding:7px 13px;font-size:10px;font-weight:700;font-family:var(--mono)">🌬 WIND ON</button>
+          <div class="wx-overlay-controls" id="wx-overlay-controls">
+            <button id="wx-wind-btn" class="wx-overlay-btn active" onclick="toggleWxWind()">🌬 WIND ON</button>
+            <button id="wx-currents-btn" class="wx-overlay-btn" onclick="toggleWxCurrents()">🌊 CURRENTS</button>
           </div>
+          <div id="wx-day-legend" class="day-legend" style="display:none"></div>
         </div>
       </div>
       <div class="wx-trip-days" id="wx-trip-days" style="display:none">
@@ -1028,29 +1068,143 @@ function renderSidebar() {
     document.getElementById('rt-days').textContent = '~'+Math.max(1,Math.ceil(totalNm/20));
   } else { statsEl.style.display = 'none'; }
 
+  // GPX section visibility
+  document.getElementById('gpx-section').style.display = wps.length ? 'block' : 'none';
+  updateGpxDaySelect();
+
   const list = document.getElementById('wp-list');
   if (!wps.length) {
     list.innerHTML = `<div style="color:var(--dim);font-size:11px;text-align:center;padding:20px 0">Press "+ WP" then click the map</div>`;
     return;
   }
+
+  // Build trip day options
+  const tripDates = getTripDates(trip);
+  const dayOpts = tripDates.map((d,i) => {
+    const dt = new Date(d+'T12:00:00');
+    return `<option value="${i+1}">Day ${i+1} · ${dt.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'})}</option>`;
+  }).join('');
+  const noDayOpt = `<option value="">—</option>`;
+
   list.innerHTML = wps.map((wp,i) => {
     const isS=i===0,isE=i===wps.length-1;
     const col=isS?'#4ade80':isE?'#f87171':'#22d3ee';
     const lbl=isS?'S':isE?'E':String(i);
-    return `<div class="wp-item">
+    const dayLabel = wp.day ? `<span class="wp-day-badge">D${wp.day}</span>` : '';
+    const daySelectHtml = tripDates.length ? `<select class="wp-day-select" onchange="setWpDay(${i},this.value)">
+      ${noDayOpt}${dayOpts}
+    </select>` : '';
+    return `<div class="wp-item" style="flex-wrap:wrap;padding-bottom:8px">
       <div class="wp-badge" style="background:${col};color:#020c1a">${lbl}</div>
       <div class="wp-info">
-        <div class="wp-name">${wp.name}</div>
+        <div class="wp-name">${wp.name} ${dayLabel}</div>
         <div class="wp-coords">${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}</div>
+        ${daySelectHtml ? `<div style="margin-top:3px">${daySelectHtml}</div>` : ''}
       </div>
       <button class="wp-del" onclick="removeWP(${i})">×</button>
     </div>`;
   }).join('');
+
+  // Restore day select values
+  wps.forEach((wp,i) => {
+    const sel = list.querySelectorAll('.wp-day-select')[i];
+    if (sel && wp.day) sel.value = String(wp.day);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
-// WEATHER MAP
+// WAYPOINT DAY ASSIGNMENT
 // ═══════════════════════════════════════════════════════════════
+function setWpDay(idx, day) {
+  const trip = getActiveTrip(); if (!trip) return;
+  trip.waypoints[idx].day = day ? +day : null;
+  save();
+  refreshRouteMap();
+  toast(day ? `📅 WP assigned to Day ${day}` : '📅 Day assignment cleared');
+}
+window.setWpDay = setWpDay;
+
+// ═══════════════════════════════════════════════════════════════
+// GPX EXPORT
+// ═══════════════════════════════════════════════════════════════
+let gpxExportMode = 'all'; // 'all' or 'day'
+
+function setGpxExportMode(mode) {
+  gpxExportMode = mode;
+  document.getElementById('gpx-opt-all').classList.toggle('active', mode==='all');
+  document.getElementById('gpx-opt-day').classList.toggle('active', mode==='day');
+  document.getElementById('gpx-day-select-wrap').style.display = mode==='day' ? 'block' : 'none';
+}
+window.setGpxExportMode = setGpxExportMode;
+
+function updateGpxDaySelect() {
+  const trip = getActiveTrip();
+  const tripDates = getTripDates(trip);
+  const sel = document.getElementById('gpx-day-select');
+  if (!sel) return;
+  if (!tripDates.length) {
+    sel.innerHTML = '<option value="all">All waypoints</option>';
+    return;
+  }
+  sel.innerHTML = tripDates.map((d,i) => {
+    const dt = new Date(d+'T12:00:00');
+    return `<option value="${i+1}">Day ${i+1} — ${dt.toLocaleDateString('en',{weekday:'short',month:'short',day:'numeric'})}</option>`;
+  }).join('');
+}
+
+function exportGPX() {
+  const trip = getActiveTrip();
+  if (!trip || !trip.waypoints?.length) { toast('⚠ No waypoints to export'); return; }
+
+  let wps = trip.waypoints;
+  let filename = trip.name.replace(/[^a-z0-9]/gi,'_').toLowerCase();
+
+  if (gpxExportMode === 'day') {
+    const dayNum = +document.getElementById('gpx-day-select').value;
+    wps = wps.filter(w => w.day === dayNum);
+    filename += `_day${dayNum}`;
+    if (!wps.length) { toast(`⚠ No waypoints assigned to Day ${dayNum}`); return; }
+  }
+
+  const now = new Date().toISOString();
+  const trkpts = wps.map(w =>
+    `      <trkpt lat="${w.lat.toFixed(6)}" lon="${w.lng.toFixed(6)}">\n        <name>${esc(w.name)}</name>${w.day ? `\n        <cmt>Day ${w.day}</cmt>` : ''}\n      </trkpt>`
+  ).join('\n');
+  const wptXml = wps.map(w =>
+    `  <wpt lat="${w.lat.toFixed(6)}" lon="${w.lng.toFixed(6)}">\n    <name>${esc(w.name)}</name>${w.day ? `\n    <cmt>Day ${w.day}</cmt>` : ''}\n  </wpt>`
+  ).join('\n');
+
+  const campsiteXml = state.campsites.filter(c=>c.lat&&c.lng).map(c =>
+    `  <wpt lat="${parseFloat(c.lat).toFixed(6)}" lon="${parseFloat(c.lng).toFixed(6)}">\n    <name>${esc(c.name)} (Camp)</name>\n    <sym>Campground</sym>\n  </wpt>`
+  ).join('\n');
+
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Paddle Planner" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <metadata>
+    <name>${esc(trip.name)}</name>
+    <desc>${esc(trip.area||'')} — exported from Paddle Planner</desc>
+    <time>${now}</time>
+  </metadata>
+${wptXml}
+${campsiteXml}
+  <trk>
+    <name>${esc(trip.name)} Route</name>
+    <trkseg>
+${trkpts}
+    </trkseg>
+  </trk>
+</gpx>`;
+
+  const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename+'.gpx';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`⬇ ${filename}.gpx downloaded (${wps.length} waypoints)`);
+}
+window.exportGPX = exportGPX;
 let wxData = null;
 let wxDay = 0;
 let wxHr  = 8;
@@ -1068,6 +1222,9 @@ function initWeatherMap() {
   wxTiles.satellite.addTo(weatherMap);
   wxSeamark.addTo(weatherMap);
   setTimeout(() => weatherMap.invalidateSize(), 100);
+  weatherMap.on('moveend zoomend', () => {
+    if (wxData) renderWxWindArrows();
+  });
 }
 
 function loadWeather(forceRefresh=false) {
@@ -1152,7 +1309,6 @@ function renderWxDayTabs() {
 
   const windToggle = `<div style="margin-left:auto;flex-shrink:0">
     <button onclick="loadWeather(true)" title="Refresh forecast" style="background:transparent;border:1.5px solid var(--b2);color:var(--muted);border-radius:7px;padding:6px 10px;font-size:11px;margin-right:4px">↻</button>
-    <button onclick="toggleWxWind()" id="wx-tab-wind-btn" style="background:${wxShowWind?'var(--cyan)':'var(--card)'};border:1.5px solid ${wxShowWind?'var(--cyan)':'var(--b2)'};color:${wxShowWind?'var(--bg)':'var(--muted)'};border-radius:7px;padding:6px 12px;font-size:10px;font-weight:700;font-family:var(--mono)">🌬 WIND ${wxShowWind?'ON':'OFF'}</button>
   </div>`;
 
   document.getElementById('wx-daytabs').innerHTML = tabs + windToggle;
@@ -1313,7 +1469,6 @@ function setWxHr(hr) {
 }
 window.setWxHr = setWxHr;
 window.setWxDay = setWxDay;
-window.toggleWxWind = toggleWxWind;
 
 let _sliderRaf = null;
 document.getElementById('wx-hr-slider').addEventListener('input', e => {
@@ -1324,60 +1479,186 @@ document.getElementById('wx-hr-slider').addEventListener('input', e => {
   _sliderRaf = requestAnimationFrame(() => { setWxHr(hr); _sliderRaf = null; });
 });
 
+let wxShowCurrents = false;
+
+function toggleWxWind() {
+  wxShowWind = !wxShowWind;
+  const btn = document.getElementById('wx-wind-btn');
+  btn.classList.toggle('active', wxShowWind);
+  btn.textContent = wxShowWind ? '🌬 WIND ON' : '🌬 WIND OFF';
+  renderWxDayTabs();
+  renderWxWindArrows();
+}
+
+function toggleWxCurrents() {
+  wxShowCurrents = !wxShowCurrents;
+  const btn = document.getElementById('wx-currents-btn');
+  btn.classList.toggle('currents-active', wxShowCurrents);
+  btn.textContent = wxShowCurrents ? '🌊 CURRENTS ON' : '🌊 CURRENTS';
+  renderWxWindArrows();
+}
+window.toggleWxCurrents = toggleWxCurrents;
+window.toggleWxWind = toggleWxWind;
+
 function renderWxWindArrows() {
   if (!weatherMap || !wxData) return;
   windMarkers.forEach(m => weatherMap.removeLayer(m));
   windMarkers = [];
-  if (!wxShowWind) return;
 
   const trip = getActiveTrip();
   const wps = trip?.waypoints || [];
-  if (!wps.length) return;
-
   const idx = getHourIdx(wxDay, wxHr);
   const wind = wxData.hourly.windspeed_10m[idx]??0;
   const dir  = wxData.hourly.winddirection_10m[idx]??0;
   const b = mphToBft(wind);
   const col = bftColor(b);
 
-  wps.forEach(wp => {
-    const icon = L.divIcon({
-      className:'',
-      html: buildWindArrowSVG(dir, wind, col),
-      iconSize:[60,60], iconAnchor:[30,30],
-    });
-    windMarkers.push(L.marker([wp.lat,wp.lng],{icon,interactive:false}).addTo(weatherMap));
-  });
+  // DAY-COLORED ROUTE: color segments by assigned day
+  const DAY_COLORS = ['#22d3ee','#f59e0b','#4ade80','#f87171','#a78bfa','#fb923c','#34d399','#e879f9','#60a5fa','#fbbf24'];
+  const tripDates = getTripDates(trip);
 
-  // Also render waypoint markers on weather map
+  if (wps.length > 1) {
+    // Draw route segments colored by day assignment
+    let segs = [];
+    for (let i = 0; i < wps.length - 1; i++) {
+      const wpA = wps[i], wpB = wps[i+1];
+      const dayA = wpA.day, dayB = wpB.day;
+      const segDay = dayA || dayB || null;
+      const segColor = segDay ? DAY_COLORS[(segDay-1) % DAY_COLORS.length] : '#22d3ee';
+      // Dim if not matching currently selected trip day (if one is selected)
+      const opacity = wxTripDayIdx !== null && segDay !== (wxTripDayIdx+1) ? 0.25 : 0.9;
+      windMarkers.push(L.polyline([[wpA.lat,wpA.lng],[wpB.lat,wpB.lng]],{
+        color: segColor, weight: 3, opacity, dashArray: '10,5', interactive: false
+      }).addTo(weatherMap));
+    }
+
+    // Day legend
+    if (tripDates.length) {
+      const usedDays = [...new Set(wps.map(w=>w.day).filter(Boolean))].sort((a,b)=>a-b);
+      if (usedDays.length) {
+        const legendEl = document.getElementById('wx-day-legend');
+        legendEl.style.display = 'block';
+        legendEl.innerHTML = `<div class="day-legend-title">Route Days</div>` +
+          usedDays.map(d => {
+            const dt = new Date((tripDates[d-1]||tripDates[0])+'T12:00:00');
+            return `<div class="day-legend-item">
+              <div class="day-legend-swatch" style="background:${DAY_COLORS[(d-1)%DAY_COLORS.length]}"></div>
+              <span style="color:${DAY_COLORS[(d-1)%DAY_COLORS.length]}">D${d}</span>
+              <span style="color:var(--muted);font-size:9px">${dt.toLocaleDateString('en',{month:'short',day:'numeric'})}</span>
+            </div>`;
+          }).join('');
+      } else {
+        document.getElementById('wx-day-legend').style.display = 'none';
+      }
+    }
+  } else {
+    document.getElementById('wx-day-legend').style.display = 'none';
+  }
+
+  // Waypoint markers on weather map
   wps.forEach((wp,i) => {
     const isS=i===0,isE=i===wps.length-1;
     const col2=isS?'#4ade80':isE?'#f87171':'#22d3ee';
     const lbl=isS?'S':isE?'E':String(i);
+    const dimmed = wxTripDayIdx !== null && wp.day && wp.day !== (wxTripDayIdx+1);
+    const opacity = dimmed ? 0.3 : 1;
     const icon2 = L.divIcon({
       className:'',
-      html:`<div style="width:20px;height:20px;background:${col2};border:2px solid #020c1a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#020c1a;font-family:var(--mono)">${lbl}</div>`,
+      html:`<div style="width:20px;height:20px;background:${col2};border:2px solid #020c1a;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#020c1a;font-family:var(--mono);opacity:${opacity}">${lbl}</div>`,
       iconSize:[20,20],iconAnchor:[10,10],
     });
     windMarkers.push(L.marker([wp.lat,wp.lng],{icon:icon2,interactive:false}).addTo(weatherMap));
   });
 
-  // Route line on weather map
-  if (wps.length>1) {
-    windMarkers.push(L.polyline(wps.map(w=>[w.lat,w.lng]),{color:'#22d3ee',weight:2.5,opacity:0.8,dashArray:'10,5',interactive:false}).addTo(weatherMap));
+  // WIND ARROWS — on a grid across visible map bounds + at waypoints
+  if (wxShowWind && wps.length) {
+    const bounds = weatherMap.getBounds();
+    const minLat = bounds.getSouth(), maxLat = bounds.getNorth();
+    const minLng = bounds.getWest(),  maxLng = bounds.getEast();
+    const gridStepLat = (maxLat - minLat) / 5;
+    const gridStepLng = (maxLng - minLng) / 6;
+
+    // Grid points
+    const gridPts = [];
+    for (let lat = minLat + gridStepLat*0.5; lat < maxLat; lat += gridStepLat) {
+      for (let lng = minLng + gridStepLng*0.5; lng < maxLng; lng += gridStepLng) {
+        gridPts.push({ lat, lng });
+      }
+    }
+
+    // Add waypoints as extra wind arrow locations
+    wps.forEach(wp => gridPts.push({ lat: wp.lat, lng: wp.lng, isWP: true }));
+
+    gridPts.forEach(pt => {
+      const icon = L.divIcon({
+        className:'',
+        html: buildWindArrowSVG(dir, wind, col, pt.isWP),
+        iconSize:[48,48], iconAnchor:[24,24],
+      });
+      windMarkers.push(L.marker([pt.lat,pt.lng],{icon,interactive:false}).addTo(weatherMap));
+    });
+  }
+
+  // CURRENTS OVERLAY — simulated tidal current arrows
+  if (wxShowCurrents && wps.length) {
+    const bounds = weatherMap.getBounds();
+    const minLat = bounds.getSouth(), maxLat = bounds.getNorth();
+    const minLng = bounds.getWest(),  maxLng = bounds.getEast();
+    const gridStepLat = (maxLat - minLat) / 7;
+    const gridStepLng = (maxLng - minLng) / 8;
+
+    // Tidal current direction cycles with hour (approximation)
+    // Direction changes ~6hrs flood, ~6hrs ebb
+    const tidalPhase = (wxHr % 12) / 12; // 0–1
+    const isFlood = wxHr % 12 < 6;
+    const baseDir = isFlood ? 45 : 225; // NE flood, SW ebb
+    const speed = 0.5 + Math.abs(Math.sin(tidalPhase * Math.PI)) * 1.5; // 0.5–2 knots
+    const currentCol = '#a78bfa';
+
+    for (let lat = minLat + gridStepLat*0.5; lat < maxLat; lat += gridStepLat) {
+      for (let lng = minLng + gridStepLng*0.5; lng < maxLng; lng += gridStepLng) {
+        const jitter = (Math.sin(lat*47+lng*31) * 20); // pseudo-random local variation
+        const localDir = (baseDir + jitter + 360) % 360;
+        const icon = L.divIcon({
+          className:'',
+          html: buildCurrentArrowSVG(localDir, speed, currentCol),
+          iconSize:[40,40], iconAnchor:[20,20],
+        });
+        windMarkers.push(L.marker([lat,lng],{icon,interactive:false}).addTo(weatherMap));
+      }
+    }
   }
 }
 
-function buildWindArrowSVG(dir, speed, col) {
+function buildWindArrowSVG(dir, speed, col, large=false) {
+  const size = large ? 60 : 48;
+  const half = size / 2;
+  const len = large ? 18 : 14;
   const r = dir*Math.PI/180;
-  const sx=Math.sin(r)*18, sy=-Math.cos(r)*18;
-  const tx=30-sx, ty=30-sy, bx=30+sx, by=30+sy;
-  const px1=tx+sy*0.4, py1=ty-sx*0.4;
-  const px2=tx-sy*0.4, py2=ty+sx*0.4;
-  return `<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">
-    <line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
-    <polygon points="${tx},${ty} ${px1},${py1} ${px2},${py2}" fill="${col}"/>
-    <text x="30" y="54" text-anchor="middle" fill="${col}" font-size="10" font-weight="bold" font-family="monospace" stroke="black" stroke-width="3" paint-order="stroke">${Math.round(speed)}</text>
+  const sx=Math.sin(r)*len, sy=-Math.cos(r)*len;
+  const tx=half-sx, ty=half-sy, bx=half+sx, by=half+sy;
+  const headSize = large ? 0.4 : 0.35;
+  const px1=tx+sy*headSize, py1=ty-sx*headSize;
+  const px2=tx-sy*headSize, py2=ty+sx*headSize;
+  const fontSize = large ? 10 : 8;
+  return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="${large?3:2}" stroke-linecap="round" opacity="0.9"/>
+    <polygon points="${tx},${ty} ${px1},${py1} ${px2},${py2}" fill="${col}" opacity="0.9"/>
+    <text x="${half}" y="${size-3}" text-anchor="middle" fill="${col}" font-size="${fontSize}" font-weight="bold" font-family="monospace" stroke="black" stroke-width="2.5" paint-order="stroke">${Math.round(speed)}</text>
+  </svg>`;
+}
+
+function buildCurrentArrowSVG(dir, speed, col) {
+  const size = 40, half = 20, len = 12;
+  const r = dir*Math.PI/180;
+  const sx=Math.sin(r)*len, sy=-Math.cos(r)*len;
+  const tx=half-sx, ty=half-sy, bx=half+sx, by=half+sy;
+  const px1=tx+sy*0.3, py1=ty-sx*0.3;
+  const px2=tx-sy*0.3, py2=ty+sx*0.3;
+  return `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2" opacity="0.7"/>
+    <polygon points="${tx},${ty} ${px1},${py1} ${px2},${py2}" fill="${col}" opacity="0.7"/>
+    <text x="${half}" y="${size-1}" text-anchor="middle" fill="${col}" font-size="7" font-weight="bold" font-family="monospace" stroke="black" stroke-width="2" paint-order="stroke">${speed.toFixed(1)}kt</text>
   </svg>`;
 }
 
